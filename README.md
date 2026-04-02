@@ -68,16 +68,7 @@ Four algorithms make PawPal+ more intelligent than a plain task list:
 
 ## 📸 Demo
 
-> Add a screenshot of your running Streamlit app here using:
-> ```
-> streamlit run app.py
-> ```
-> Then embed with:
-> ```html
-> <a href="/course_images/ai110/your_screenshot_name.png" target="_blank">
->   <img src='/course_images/ai110/your_screenshot_name.png' title='PawPal App' width='' alt='PawPal App' class='center-block' />
-> </a>
-> ```
+<img width="2840" height="1688" alt="image" src="https://github.com/user-attachments/assets/3c4d0735-8d3a-47b0-8d1f-23867834c3d0" />
 
 ## Data Persistence
 
