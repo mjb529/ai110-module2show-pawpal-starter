@@ -79,6 +79,22 @@ Four algorithms make PawPal+ more intelligent than a plain task list:
 > </a>
 > ```
 
+## Data Persistence
+
+PawPal+ automatically saves all owner, pet, and task data to `data.json` after every change. The next time the Streamlit app starts, it reloads from that file so your schedule is never lost.
+
+**How it works (Agent Mode implementation):**
+
+Serialization uses a custom dictionary conversion on each class rather than a third-party library like marshmallow:
+
+- `Task.to_dict()` / `Task.from_dict()` — converts all fields; `due_date` stored as an ISO-8601 string (`YYYY-MM-DD`)
+- `Pet.to_dict()` / `Pet.from_dict()` — nests its task list
+- `Owner.to_dict()` / `Owner.from_dict()` — nests its pet list and blocked times
+- `Owner.save_to_json(path)` — writes the full object graph to a file
+- `Owner.load_from_json(path)` — reads it back, returns `None` safely if the file doesn't exist
+
+In `app.py`, `Owner.load_from_json("data.json")` is called during session state initialisation so data persists across full app restarts. An `autosave()` helper is called after every mutation (add pet, add task, block time, mark complete).
+
 ## Running the CLI demo
 
 ```bash

@@ -1,6 +1,10 @@
+from __future__ import annotations
+
+import json
+import os
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -15,6 +19,33 @@ class Task:
     pet_name: str = ""
     is_complete: bool = False
     due_date: date = field(default_factory=date.today)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialise this Task to a JSON-compatible dictionary."""
+        return {
+            "description": self.description,
+            "scheduled_time": self.scheduled_time,
+            "duration_minutes": self.duration_minutes,
+            "priority": self.priority,
+            "frequency": self.frequency,
+            "pet_name": self.pet_name,
+            "is_complete": self.is_complete,
+            "due_date": self.due_date.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Task":
+        """Reconstruct a Task from a dictionary produced by to_dict()."""
+        return cls(
+            description=data["description"],
+            scheduled_time=data["scheduled_time"],
+            duration_minutes=data["duration_minutes"],
+            priority=data["priority"],
+            frequency=data["frequency"],
+            pet_name=data.get("pet_name", ""),
+            is_complete=data.get("is_complete", False),
+            due_date=date.fromisoformat(data["due_date"]),
+        )
 
     def mark_complete(self) -> Optional["Task"]:
         """Mark this task complete and return the next occurrence for recurring tasks."""
@@ -60,6 +91,27 @@ class Pet:
         """Return all tasks belonging to this pet."""
         return self.tasks
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialise this Pet to a JSON-compatible dictionary."""
+        return {
+            "name": self.name,
+            "species": self.species,
+            "date_of_birth": self.date_of_birth.isoformat(),
+            "tasks": [t.to_dict() for t in self.tasks],
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Pet":
+        """Reconstruct a Pet from a dictionary produced by to_dict()."""
+        pet = cls(
+            name=data["name"],
+            species=data["species"],
+            date_of_birth=date.fromisoformat(data["date_of_birth"]),
+        )
+        for task_data in data.get("tasks", []):
+            pet.tasks.append(Task.from_dict(task_data))
+        return pet
+
 
 class Owner:
     """Manages a collection of Pets and tracks blocked time slots."""
@@ -84,6 +136,36 @@ class Owner:
         for pet in self.pets:
             tasks.extend(pet.get_tasks())
         return tasks
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialise this Owner (and all pets/tasks) to a JSON-compatible dictionary."""
+        return {
+            "name": self.name,
+            "blocked_times": self.blocked_times,
+            "pets": [p.to_dict() for p in self.pets],
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Owner":
+        """Reconstruct an Owner from a dictionary produced by to_dict()."""
+        owner = cls(name=data["name"])
+        owner.blocked_times = data.get("blocked_times", [])
+        for pet_data in data.get("pets", []):
+            owner.pets.append(Pet.from_dict(pet_data))
+        return owner
+
+    def save_to_json(self, filepath: str = "data.json") -> None:
+        """Persist the owner's full state to a JSON file."""
+        with open(filepath, "w") as f:
+            json.dump(self.to_dict(), f, indent=2)
+
+    @classmethod
+    def load_from_json(cls, filepath: str = "data.json") -> Optional["Owner"]:
+        """Load and return an Owner from a JSON file, or None if the file doesn't exist."""
+        if not os.path.exists(filepath):
+            return None
+        with open(filepath) as f:
+            return cls.from_dict(json.load(f))
 
 
 class Scheduler:

@@ -10,8 +10,17 @@ st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 # ── Session state bootstrap ───────────────────────────────────────────────────
 # Streamlit reruns the script on every interaction; we persist the Owner object
 # in st.session_state so data survives between button clicks.
+# On first load we also attempt to restore from data.json so the schedule
+# survives full app restarts.
 if "owner" not in st.session_state:
-    st.session_state.owner = None
+    st.session_state.owner = Owner.load_from_json("data.json")
+
+DATA_FILE = "data.json"
+
+def autosave() -> None:
+    """Write current owner state to data.json after every mutation."""
+    if st.session_state.owner:
+        st.session_state.owner.save_to_json(DATA_FILE)
 
 # ── Header ────────────────────────────────────────────────────────────────────
 st.title("🐾 PawPal+")
@@ -24,6 +33,7 @@ with st.sidebar:
 
     if st.button("Create / Reset Owner"):
         st.session_state.owner = Owner(owner_name)
+        autosave()
         st.success(f"Owner '{owner_name}' ready!")
 
     if st.session_state.owner:
@@ -35,6 +45,7 @@ with st.sidebar:
         if st.button("Block time"):
             if blocked:
                 st.session_state.owner.block_time(blocked)
+                autosave()
                 st.success(f"{blocked} blocked.")
 
         if st.session_state.owner.blocked_times:
@@ -73,6 +84,7 @@ with tab_pets:
             st.warning(f"'{pet_name}' is already registered.")
         else:
             owner.add_pet(Pet(pet_name, species, dob))
+            autosave()
             st.success(f"{pet_name} added!")
 
     # ── Pet list & task assignment ─────────────────────────────────────────────
@@ -109,6 +121,7 @@ with tab_pets:
                     due_date=task_due,
                 )
                 pet_obj.add_task(new_task)
+                autosave()
                 st.success(f"Task '{task_desc}' added to {selected_pet_name}.")
 
         # ── Per-pet task tables ────────────────────────────────────────────────
@@ -191,6 +204,7 @@ with tab_schedule:
             if st.button("Mark Complete"):
                 idx = task_labels.index(chosen_label)
                 scheduler.mark_task_complete(incomplete[idx])
+                autosave()
                 st.success(
                     f"'{incomplete[idx].description}' marked complete."
                     + (

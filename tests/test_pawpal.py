@@ -1,4 +1,7 @@
 """Automated test suite for PawPal+ scheduling system."""
+import json
+import os
+import tempfile
 import pytest
 from datetime import date, timedelta
 from typing import Optional
@@ -227,3 +230,111 @@ class TestEdgeCases:
         assert schedule["tasks"] == []
         assert schedule["conflicts"] == []
         assert schedule["reasoning"] == []
+
+
+# ── Data persistence ───────────────────────────────────────────────────────────
+
+class TestPersistence:
+    def _make_populated_owner(self) -> Owner:
+        owner = Owner("Jordan")
+        owner.block_time("09:00")
+        pet = Pet("Mochi", "cat", date(2020, 3, 15))
+        pet.add_task(Task("Breakfast", "07:00", 10, "high", "daily", due_date=date.today()))
+        pet.add_task(Task("Medication", "09:00", 5, "high", "once", due_date=date.today()))
+        owner.add_pet(pet)
+        return owner
+
+    def test_save_creates_file(self):
+        owner = self._make_populated_owner()
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        try:
+            owner.save_to_json(path)
+            assert os.path.exists(path)
+        finally:
+            os.unlink(path)
+
+    def test_save_produces_valid_json(self):
+        owner = self._make_populated_owner()
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            path = f.name
+        try:
+            owner.save_to_json(path)
+            with open(path) as f:
+                data = json.load(f)
+            assert data["name"] == "Jordan"
+            assert len(data["pets"]) == 1
+            assert data["pets"][0]["name"] == "Mochi"
+            assert len(data["pets"][0]["tasks"]) == 2
+        finally:
+            os.unlink(path)
+
+    def test_round_trip_preserves_owner_name(self):
+        owner = self._make_populated_owner()
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        try:
+            owner.save_to_json(path)
+            loaded = Owner.load_from_json(path)
+            assert loaded.name == "Jordan"
+        finally:
+            os.unlink(path)
+
+    def test_round_trip_preserves_blocked_times(self):
+        owner = self._make_populated_owner()
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        try:
+            owner.save_to_json(path)
+            loaded = Owner.load_from_json(path)
+            assert loaded.blocked_times == ["09:00"]
+        finally:
+            os.unlink(path)
+
+    def test_round_trip_preserves_pet_and_tasks(self):
+        owner = self._make_populated_owner()
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        try:
+            owner.save_to_json(path)
+            loaded = Owner.load_from_json(path)
+            assert len(loaded.pets) == 1
+            pet = loaded.pets[0]
+            assert pet.name == "Mochi"
+            assert pet.species == "cat"
+            assert len(pet.tasks) == 2
+        finally:
+            os.unlink(path)
+
+    def test_round_trip_preserves_task_fields(self):
+        owner = self._make_populated_owner()
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        try:
+            owner.save_to_json(path)
+            loaded = Owner.load_from_json(path)
+            task = loaded.pets[0].tasks[0]
+            assert task.description == "Breakfast"
+            assert task.scheduled_time == "07:00"
+            assert task.priority == "high"
+            assert task.frequency == "daily"
+            assert task.due_date == date.today()
+            assert task.is_complete is False
+        finally:
+            os.unlink(path)
+
+    def test_load_returns_none_when_file_missing(self):
+        result = Owner.load_from_json("/tmp/nonexistent_pawpal_test.json")
+        assert result is None
+
+    def test_completed_task_survives_round_trip(self):
+        owner = self._make_populated_owner()
+        owner.pets[0].tasks[0].is_complete = True
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        try:
+            owner.save_to_json(path)
+            loaded = Owner.load_from_json(path)
+            assert loaded.pets[0].tasks[0].is_complete is True
+        finally:
+            os.unlink(path)
