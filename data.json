@@ -1,0 +1,103 @@
+{
+  "name": "Matthew",
+  "blocked_times": [],
+  "pets": [
+    {
+      "name": "Mr. Jasper",
+      "species": "cat",
+      "date_of_birth": "2021-06-10",
+      "tasks": [
+        {
+          "description": "Morning feeding",
+          "scheduled_time": "07:30",
+          "duration_minutes": 10,
+          "priority": "high",
+          "frequency": "daily",
+          "pet_name": "Mr. Jasper",
+          "is_complete": false,
+          "due_date": "2026-04-01"
+        },
+        {
+          "description": "Morning playtime",
+          "scheduled_time": "09:00",
+          "duration_minutes": 20,
+          "priority": "medium",
+          "frequency": "daily",
+          "pet_name": "Mr. Jasper",
+          "is_complete": true,
+          "due_date": "2026-04-01"
+        },
+        {
+          "description": "Midday feeding",
+          "scheduled_time": "12:30",
+          "duration_minutes": 10,
+          "priority": "high",
+          "frequency": "daily",
+          "pet_name": "Mr. Jasper",
+          "is_complete": false,
+          "due_date": "2026-04-01"
+        },
+        {
+          "description": "Afternoon nap check",
+          "scheduled_time": "15:00",
+          "duration_minutes": 5,
+          "priority": "low",
+          "frequency": "daily",
+          "pet_name": "Mr. Jasper",
+          "is_complete": false,
+          "due_date": "2026-04-01"
+        },
+        {
+          "description": "Evening feeding",
+          "scheduled_time": "18:00",
+          "duration_minutes": 10,
+          "priority": "high",
+          "frequency": "daily",
+          "pet_name": "Mr. Jasper",
+          "is_complete": false,
+          "due_date": "2026-04-01"
+        },
+        {
+          "description": "Medication",
+          "scheduled_time": "20:00",
+          "duration_minutes": 5,
+          "priority": "high",
+          "frequency": "daily",
+          "pet_name": "Mr. Jasper",
+          "is_complete": false,
+          "due_date": "2026-04-01"
+        },
+        {
+          "description": "Weekly grooming",
+          "scheduled_time": "11:00",
+          "duration_minutes": 30,
+          "priority": "low",
+          "frequency": "weekly",
+          "pet_name": "Mr. Jasper",
+          "is_complete": false,
+          "due_date": "2026-04-01"
+        },
+        {
+          "description": "Vet checkup",
+          "scheduled_time": "10:00",
+          "duration_minutes": 60,
+          "priority": "medium",
+          "frequency": "once",
+          "pet_name": "Mr. Jasper",
+          "is_complete": false,
+          "due_date": "2026-05-01"
+        },
+        {
+          "description": "Morning playtime",
+          "scheduled_time": "09:00",
+          "duration_minutes": 20,
+          "priority": "medium",
+          "frequency": "daily",
+          "pet_name": "Mr. Jasper",
+          "is_complete": false,
+          "due_date": "2026-04-02"
+        }
+      ]
+    }
+  ]
+}
