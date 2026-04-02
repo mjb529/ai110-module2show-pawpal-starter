@@ -14,6 +14,8 @@ classDiagram
         +bool is_complete
         +date due_date
         +mark_complete() Task
+        +to_dict() dict
+        +from_dict(data: dict) Task
     }
 
     class Pet {
@@ -23,6 +25,8 @@ classDiagram
         +List~Task~ tasks
         +add_task(task: Task) None
         +get_tasks() List~Task~
+        +to_dict() dict
+        +from_dict(data: dict) Pet
     }
 
     class Owner {
@@ -32,6 +36,10 @@ classDiagram
         +add_pet(pet: Pet) None
         +block_time(time_str: str) None
         +get_all_tasks() List~Task~
+        +to_dict() dict
+        +from_dict(data: dict) Owner
+        +save_to_json(filepath: str) None
+        +load_from_json(filepath: str) Owner
     }
 
     class Scheduler {

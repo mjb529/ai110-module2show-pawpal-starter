@@ -1,19 +1,11 @@
 """PawPal+ Streamlit UI — connected to pawpal_system.py backend."""
 import streamlit as st
-from datetime import date
+from datetime import date, timedelta
 
 from pawpal_system import Owner, Pet, Task, Scheduler
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
-
-# ── Session state bootstrap ───────────────────────────────────────────────────
-# Streamlit reruns the script on every interaction; we persist the Owner object
-# in st.session_state so data survives between button clicks.
-# On first load we also attempt to restore from data.json so the schedule
-# survives full app restarts.
-if "owner" not in st.session_state:
-    st.session_state.owner = Owner.load_from_json("data.json")
 
 DATA_FILE = "data.json"
 
@@ -22,38 +14,67 @@ def autosave() -> None:
     if st.session_state.owner:
         st.session_state.owner.save_to_json(DATA_FILE)
 
+def create_demo_owner() -> Owner:
+    """Return a pre-populated Owner (Matthew) with Mr. Jasper for first-run demos."""
+    owner = Owner("Matthew")
+    today = date.today()
+    jasper = Pet("Mr. Jasper", "cat", date(2021, 6, 10))
+    jasper.add_task(Task("Morning feeding",    "07:30", 10, "high",   "daily",  due_date=today))
+    jasper.add_task(Task("Morning playtime",   "09:00", 20, "medium", "daily",  due_date=today))
+    jasper.add_task(Task("Midday feeding",     "12:30", 10, "high",   "daily",  due_date=today))
+    jasper.add_task(Task("Afternoon nap check","15:00",  5, "low",    "daily",  due_date=today))
+    jasper.add_task(Task("Evening feeding",    "18:00", 10, "high",   "daily",  due_date=today))
+    jasper.add_task(Task("Medication",         "20:00",  5, "high",   "daily",  due_date=today))
+    jasper.add_task(Task("Weekly grooming",    "11:00", 30, "low",    "weekly", due_date=today))
+    jasper.add_task(Task("Vet checkup",        "10:00", 60, "medium", "once",   due_date=today + timedelta(days=30)))
+    owner.add_pet(jasper)
+    return owner
+
+# ── Session state bootstrap ───────────────────────────────────────────────────
+# Try to restore from data.json first; fall back to demo data on fresh install.
+if "owner" not in st.session_state:
+    loaded = Owner.load_from_json(DATA_FILE)
+    if loaded:
+        st.session_state.owner = loaded
+    else:
+        st.session_state.owner = create_demo_owner()
+        autosave()
+
 # ── Header ────────────────────────────────────────────────────────────────────
 st.title("🐾 PawPal+")
 st.caption("Smart pet care scheduling for busy owners.")
 
-# ── Sidebar: owner setup ──────────────────────────────────────────────────────
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Owner Setup")
-    owner_name = st.text_input("Your name", value="Jordan", key="owner_name_input")
 
-    if st.button("Create / Reset Owner"):
-        st.session_state.owner = Owner(owner_name)
-        autosave()
-        st.success(f"Owner '{owner_name}' ready!")
+    with st.form("owner_form"):
+        default_name = st.session_state.owner.name if st.session_state.owner else "Matthew"
+        owner_name = st.text_input("Your name", value=default_name)
+        if st.form_submit_button("Create / Reset Owner"):
+            st.session_state.owner = Owner(owner_name)
+            autosave()
+            st.success(f"Owner '{owner_name}' ready!")
 
     if st.session_state.owner:
         st.divider()
         st.subheader("Block a time slot")
-        blocked = st.text_input(
-            "Block time (HH:MM)", placeholder="e.g. 09:00", key="block_input"
-        )
-        if st.button("Block time"):
-            if blocked:
-                st.session_state.owner.block_time(blocked)
-                autosave()
-                st.success(f"{blocked} blocked.")
+        with st.form("block_form"):
+            blocked = st.text_input("Time (HH:MM)", placeholder="e.g. 09:00")
+            if st.form_submit_button("Block time"):
+                if blocked:
+                    st.session_state.owner.block_time(blocked)
+                    autosave()
+                    st.success(f"{blocked} blocked.")
+                else:
+                    st.warning("Enter a time first.")
 
         if st.session_state.owner.blocked_times:
             st.caption("Blocked: " + ", ".join(st.session_state.owner.blocked_times))
 
-# ── Guard: require owner ──────────────────────────────────────────────────────
+# ── Guard ─────────────────────────────────────────────────────────────────────
 if not st.session_state.owner:
-    st.info('Use the sidebar to create an owner first, then come back here.')
+    st.info("Use the sidebar to create an owner first.")
     st.stop()
 
 owner: Owner = st.session_state.owner
@@ -68,149 +89,148 @@ with tab_pets:
 
     # ── Add a pet ─────────────────────────────────────────────────────────────
     st.subheader("Add a Pet")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        pet_name = st.text_input("Pet name", key="pet_name")
-    with col2:
-        species = st.selectbox("Species", ["dog", "cat", "rabbit", "other"], key="species")
-    with col3:
-        dob = st.date_input("Date of birth", value=date(2020, 1, 1), key="dob")
+    with st.form("add_pet_form"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            new_pet_name = st.text_input("Pet name")
+        with col2:
+            new_species = st.selectbox("Species", ["cat", "dog", "rabbit", "other"])
+        with col3:
+            new_dob = st.date_input("Date of birth", value=date(2020, 1, 1))
+        if st.form_submit_button("Add Pet"):
+            existing = [p.name for p in owner.pets]
+            if not new_pet_name:
+                st.warning("Please enter a pet name.")
+            elif new_pet_name in existing:
+                st.warning(f"'{new_pet_name}' is already registered.")
+            else:
+                owner.add_pet(Pet(new_pet_name, new_species, new_dob))
+                autosave()
+                st.success(f"{new_pet_name} added!")
 
-    if st.button("Add Pet"):
-        existing = [p.name for p in owner.pets]
-        if not pet_name:
-            st.warning("Please enter a pet name.")
-        elif pet_name in existing:
-            st.warning(f"'{pet_name}' is already registered.")
-        else:
-            owner.add_pet(Pet(pet_name, species, dob))
-            autosave()
-            st.success(f"{pet_name} added!")
-
-    # ── Pet list & task assignment ─────────────────────────────────────────────
+    # ── Existing pets ─────────────────────────────────────────────────────────
     if not owner.pets:
         st.info("No pets yet. Add one above.")
     else:
         st.divider()
-        st.subheader("Schedule a Task")
 
-        pet_options = [p.name for p in owner.pets]
-        selected_pet_name = st.selectbox("Choose a pet", pet_options, key="task_pet")
+        for pet_idx, pet in enumerate(owner.pets):
+            header_col, del_col = st.columns([5, 1])
+            with header_col:
+                st.subheader(f"🐾 {pet.name}  ({pet.species})")
+            with del_col:
+                if st.button("Delete pet", key=f"del_pet_{pet_idx}", type="secondary"):
+                    owner.pets.pop(pet_idx)
+                    autosave()
+                    st.rerun()
 
-        col_a, col_b = st.columns(2)
-        with col_a:
-            task_desc = st.text_input("Task description", placeholder="e.g. Morning walk")
-            task_time = st.text_input("Scheduled time (HH:MM)", placeholder="08:00")
-            task_due = st.date_input("Due date", value=date.today(), key="task_due")
-        with col_b:
-            task_dur = st.number_input("Duration (minutes)", min_value=1, max_value=480, value=20)
-            task_pri = st.selectbox("Priority", ["high", "medium", "low"])
-            task_freq = st.selectbox("Frequency", ["once", "daily", "weekly"])
+            # ── Add task to this pet ───────────────────────────────────────────
+            with st.expander(f"Add task for {pet.name}"):
+                with st.form(f"add_task_{pet.name}"):
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        task_desc = st.text_input("Description", placeholder="e.g. Morning walk")
+                        task_time = st.text_input("Time (HH:MM)", placeholder="08:00")
+                        task_due  = st.date_input("Due date", value=date.today())
+                    with col_b:
+                        task_dur  = st.number_input("Duration (min)", min_value=1, max_value=480, value=20)
+                        task_pri  = st.selectbox("Priority", ["high", "medium", "low"])
+                        task_freq = st.selectbox("Frequency", ["daily", "once", "weekly"])
+                    if st.form_submit_button("Add Task"):
+                        if not task_desc or not task_time:
+                            st.warning("Fill in description and time.")
+                        else:
+                            pet.add_task(Task(
+                                description=task_desc,
+                                scheduled_time=task_time,
+                                duration_minutes=int(task_dur),
+                                priority=task_pri,
+                                frequency=task_freq,
+                                due_date=task_due,
+                            ))
+                            autosave()
+                            st.success(f"Task added to {pet.name}.")
 
-        if st.button("Add Task"):
-            if not task_desc or not task_time:
-                st.warning("Please fill in the task description and time.")
+            # ── Task list with delete buttons ──────────────────────────────────
+            if not pet.tasks:
+                st.caption("No tasks yet.")
             else:
-                pet_obj = next(p for p in owner.pets if p.name == selected_pet_name)
-                new_task = Task(
-                    description=task_desc,
-                    scheduled_time=task_time,
-                    duration_minutes=int(task_dur),
-                    priority=task_pri,
-                    frequency=task_freq,
-                    due_date=task_due,
-                )
-                pet_obj.add_task(new_task)
-                autosave()
-                st.success(f"Task '{task_desc}' added to {selected_pet_name}.")
+                hdr = st.columns([1, 3, 1, 1, 1, 0.6])
+                for col, label in zip(hdr, ["Time", "Task", "Priority", "Duration", "Freq", ""]):
+                    col.markdown(f"**{label}**")
+                st.divider()
+                for task_idx, task in enumerate(pet.tasks):
+                    row = st.columns([1, 3, 1, 1, 1, 0.6])
+                    row[0].write(task.scheduled_time)
+                    row[1].write(task.description)
+                    row[2].write(task.priority.upper())
+                    row[3].write(f"{task.duration_minutes} min")
+                    row[4].write(task.frequency)
+                    if row[5].button("🗑", key=f"del_task_{pet.name}_{task_idx}"):
+                        pet.tasks.pop(task_idx)
+                        autosave()
+                        st.rerun()
 
-        # ── Per-pet task tables ────────────────────────────────────────────────
-        st.divider()
-        st.subheader("Current Tasks")
-        for pet in owner.pets:
-            with st.expander(f"🐾 {pet.name} ({pet.species})", expanded=True):
-                if not pet.tasks:
-                    st.caption("No tasks yet.")
-                else:
-                    rows = [
-                        {
-                            "Time": t.scheduled_time,
-                            "Task": t.description,
-                            "Priority": t.priority.upper(),
-                            "Duration": f"{t.duration_minutes} min",
-                            "Freq": t.frequency,
-                            "Due": str(t.due_date),
-                            "Done": "✓" if t.is_complete else "○",
-                        }
-                        for t in pet.tasks
-                    ]
-                    st.table(rows)
+            st.divider()
 
 # ═════════════════════════════════════════════════════════════════════════════
 # Tab 2: Today's Schedule
 # ═════════════════════════════════════════════════════════════════════════════
 with tab_schedule:
     st.subheader(f"Schedule for {date.today().strftime('%A, %B %d %Y')}")
+    st.caption(f"Owner: {owner.name}")
 
     if not owner.pets:
-        st.info("Add pets and tasks in the first tab, then generate a schedule.")
+        st.info("Add pets and tasks in the Pets & Tasks tab first.")
     else:
         scheduler = Scheduler(owner)
+        schedule  = scheduler.generate_schedule()
 
-        if st.button("Generate Schedule"):
-            schedule = scheduler.generate_schedule()
+        # ── Conflicts ─────────────────────────────────────────────────────────
+        if schedule["conflicts"]:
+            for conflict in schedule["conflicts"]:
+                st.warning(f"⚠ {conflict}")
+        else:
+            st.success("No scheduling conflicts.")
 
-            # ── Conflicts ─────────────────────────────────────────────────────
-            if schedule["conflicts"]:
-                for conflict in schedule["conflicts"]:
-                    st.warning(f"⚠ {conflict}")
-            else:
-                st.success("No conflicts detected.")
+        # ── Task table ────────────────────────────────────────────────────────
+        if not schedule["tasks"]:
+            st.info("No tasks due today.")
+        else:
+            st.subheader("Today's Tasks")
+            hdr = st.columns([1, 2, 3, 1, 1, 0.6])
+            for col, label in zip(hdr, ["Time", "Pet", "Task", "Priority", "Duration", "Done"]):
+                col.markdown(f"**{label}**")
+            st.divider()
+            for task in schedule["tasks"]:
+                row = st.columns([1, 2, 3, 1, 1, 0.6])
+                row[0].write(task.scheduled_time)
+                row[1].write(task.pet_name)
+                row[2].write(task.description)
+                row[3].write(task.priority.upper())
+                row[4].write(f"{task.duration_minutes} min")
+                row[5].write("✓" if task.is_complete else "○")
 
             # ── Reasoning ─────────────────────────────────────────────────────
-            st.subheader("Plan & Reasoning")
-            if schedule["reasoning"]:
+            with st.expander("Plan reasoning"):
                 for line in schedule["reasoning"]:
                     st.markdown(f"- {line}")
-            else:
-                st.info("No tasks due today.")
-
-            # ── Task table ────────────────────────────────────────────────────
-            if schedule["tasks"]:
-                st.subheader("Today's Tasks (sorted by time)")
-                rows = [
-                    {
-                        "Time": t.scheduled_time,
-                        "Pet": t.pet_name,
-                        "Task": t.description,
-                        "Priority": t.priority.upper(),
-                        "Duration": f"{t.duration_minutes} min",
-                        "Done": "✓" if t.is_complete else "○",
-                    }
-                    for t in schedule["tasks"]
-                ]
-                st.table(rows)
 
         # ── Mark task complete ─────────────────────────────────────────────────
-        all_tasks = owner.get_all_tasks()
+        all_tasks  = owner.get_all_tasks()
         incomplete = [t for t in all_tasks if not t.is_complete]
         if incomplete:
             st.divider()
             st.subheader("Mark a Task Complete")
-            task_labels = [
-                f"{t.pet_name} — {t.description} @ {t.scheduled_time}" for t in incomplete
-            ]
-            chosen_label = st.selectbox("Select task", task_labels, key="complete_select")
-            if st.button("Mark Complete"):
-                idx = task_labels.index(chosen_label)
-                scheduler.mark_task_complete(incomplete[idx])
-                autosave()
-                st.success(
-                    f"'{incomplete[idx].description}' marked complete."
-                    + (
-                        " Next occurrence scheduled."
-                        if incomplete[idx].frequency != "once"
-                        else ""
-                    )
-                )
-                st.rerun()
+            with st.form("complete_form"):
+                task_labels  = [f"{t.pet_name} — {t.description} @ {t.scheduled_time}" for t in incomplete]
+                chosen_label = st.selectbox("Select task", task_labels)
+                if st.form_submit_button("Mark Complete"):
+                    idx = task_labels.index(chosen_label)
+                    scheduler.mark_task_complete(incomplete[idx])
+                    autosave()
+                    msg = f"'{incomplete[idx].description}' marked complete."
+                    if incomplete[idx].frequency != "once":
+                        msg += " Next occurrence scheduled."
+                    st.success(msg)
+                    st.rerun()
