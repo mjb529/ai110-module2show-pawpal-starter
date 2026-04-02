@@ -66,6 +66,19 @@ Four algorithms make PawPal+ more intelligent than a plain task list:
 | Conflict detection | `Scheduler.detect_conflicts()` | One-pass dictionary scan — O(n) — stores the first task seen at each time slot and emits a warning when a duplicate is found |
 | Recurring rescheduling | `Scheduler.mark_task_complete()` + `Task.mark_complete()` | `Task.mark_complete()` returns the next `Task` instance (`due_date + timedelta`); the Scheduler adds it to the correct `Pet` |
 
+## 📸 Demo
+
+> Add a screenshot of your running Streamlit app here using:
+> ```
+> streamlit run app.py
+> ```
+> Then embed with:
+> ```html
+> <a href="/course_images/ai110/your_screenshot_name.png" target="_blank">
+>   <img src='/course_images/ai110/your_screenshot_name.png' title='PawPal App' width='' alt='PawPal App' class='center-block' />
+> </a>
+> ```
+
 ## Running the CLI demo
 
 ```bash

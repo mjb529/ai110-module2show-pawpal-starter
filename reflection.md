@@ -2,6 +2,14 @@
 
 ## 1. System Design
 
+**Three core actions a user should be able to perform:**
+
+1. **Add a pet** — the owner should be able to register a pet (name, species, date of birth) so the system knows whose tasks it is managing.
+2. **Schedule a task** — the owner should be able to assign a care activity (e.g., morning walk, medication, feeding) to a specific pet with a time, duration, priority, and recurrence frequency.
+3. **View today's schedule** — the owner should be able to see all tasks for the current day sorted by time, with conflict warnings and reasoning about why each task was placed where it was.
+
+---
+
 **a. Initial design**
 
 - Briefly describe your initial UML design.
